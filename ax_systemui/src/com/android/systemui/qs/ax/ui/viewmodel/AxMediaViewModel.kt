@@ -34,15 +34,19 @@ import com.android.systemui.media.remedia.domain.model.MediaActionModel
 import com.android.systemui.media.remedia.domain.model.MediaOutputDeviceModel
 import com.android.systemui.media.remedia.domain.model.MediaSessionModel
 import com.android.systemui.media.remedia.ui.viewmodel.MediaFalsingSystem
+import com.android.systemui.keyguard.domain.interactor.KeyguardTransitionInteractor
+import com.android.systemui.keyguard.shared.model.KeyguardState
 import com.android.systemui.plugins.ActivityStarter
 import com.android.systemui.plugins.FalsingManager
 import com.android.systemui.qs.ax.data.repository.AxMediaHistoryRepository
 import com.android.systemui.qs.ax.shared.model.AxMediaSurface
+import com.android.systemui.shade.domain.interactor.ShadeInteractor
 import javax.inject.Inject
 import kotlin.math.abs
 import kotlin.math.roundToLong
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.StateFlow
 
 class AxMediaViewModel
 @Inject
@@ -54,6 +58,8 @@ constructor(
     private val activityStarter: ActivityStarter,
     @Application private val applicationScope: CoroutineScope,
     @Main private val mainDispatcher: CoroutineDispatcher,
+    private val shadeInteractor: ShadeInteractor,
+    private val keyguardTransitionInteractor: KeyguardTransitionInteractor,
 ) {
     private var scrubbingSessionKey: Any? by mutableStateOf(null)
     private var gutsSessionKey: Any? by mutableStateOf(null)
@@ -70,6 +76,8 @@ constructor(
     }
 
     val showOnLockscreen = mediaCarouselInteractor.allowMediaOnLockscreen
+    val isShadeExpanded: StateFlow<Boolean> = shadeInteractor.isAnyExpanded
+    val currentKeyguardState: StateFlow<KeyguardState> = keyguardTransitionInteractor.currentKeyguardState
     val lastMediaPackage = mediaHistoryRepository.lastMediaPackage
 
     init {

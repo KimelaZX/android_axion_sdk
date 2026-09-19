@@ -65,6 +65,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.compose.animation.Expandable as ExpandableContainer
 import com.android.compose.animation.rememberExpandableController
 import com.android.systemui.common.ui.compose.PagerDots
+import com.android.systemui.keyguard.shared.model.KeyguardState
 import com.android.systemui.lifecycle.rememberViewModel
 import com.android.systemui.media.remedia.domain.model.MediaSessionModel
 import com.android.systemui.media.remedia.shared.model.MediaCardActionButtonLayout
@@ -100,6 +101,19 @@ fun AxMediaPanel(
 ) {
     val showOnLockscreen by viewModel.showOnLockscreen.collectAsStateWithLifecycle()
     if (surface == AxMediaSurface.LOCKSCREEN && !showOnLockscreen) return
+
+    val isShadeExpanded by viewModel.isShadeExpanded.collectAsStateWithLifecycle()
+    val keyguardState by viewModel.currentKeyguardState.collectAsStateWithLifecycle()
+    val isOnLockscreen = keyguardState != KeyguardState.GONE && showOnLockscreen
+
+    val isPanelVisible = when (surface) {
+        AxMediaSurface.LOCKSCREEN -> isOnLockscreen
+        else -> isShadeExpanded
+    }
+    if (!isPanelVisible) {
+        Box(modifier = modifier)
+        return
+    }
 
     val sessions = viewModel.visibleSessions(surface)
     val currentSession = viewModel.currentSession?.takeIf { viewModel.isSessionVisible(it.key, surface) }
