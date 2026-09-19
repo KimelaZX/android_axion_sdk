@@ -367,6 +367,9 @@ bool MediaBufferConverter::isMediaOrHdrBuffer(uint32_t format, uint64_t usage, i
     if (!isConversionEnabled()) {
         return false;
     }
+    if ((usage & AHARDWAREBUFFER_USAGE_PROTECTED_CONTENT) != 0) {
+        return false;
+    }
     if (isYuvOrMediaPixelFormat(format)) {
         return true;
     }
@@ -391,6 +394,9 @@ AHardwareBuffer* MediaBufferConverter::convertToRgba8888(AHardwareBuffer* srcBuf
 
     AHardwareBuffer_Desc srcDesc;
     AHardwareBuffer_describe(srcBuffer, &srcDesc);
+    if ((srcDesc.usage & AHARDWAREBUFFER_USAGE_PROTECTED_CONTENT) != 0) {
+        return nullptr;
+    }
 
     AHardwareBuffer* dstBuffer = existingDst;
     if (dstBuffer) {
