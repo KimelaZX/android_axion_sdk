@@ -19,9 +19,9 @@ package com.android.server.axdragonite;
 import android.os.Process;
 import android.util.Slog;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
+import java.io.FileInputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -34,6 +34,12 @@ public final class AxUIBooster {
     private static final String TAG = "AxUIBooster";
 
     public static final String THREAD_NAME_RENDER_THREAD = "RenderThread";
+    public static final String PREFIX_HWUI_TASK = "hwuiTask";
+    public static final String PREFIX_HWUI_TASK_UPPER = "HwuiTask";
+    public static final String KEYWORD_WMSHELL = "wmshell";
+    public static final String KEYWORD_SPLASH = "splashscreen";
+    public static final int PID_BUFFER_CAPACITY = 1024;
+    public static final int COMM_BUFFER_SIZE = 32;
     public static final String PATH_PROC_PREFIX = "/proc/";
     public static final String PATH_TASK_SUFFIX = "/task";
     public static final String FILE_NAME_COMM = "comm";
@@ -54,6 +60,7 @@ public final class AxUIBooster {
     private final AxCpuClusterManager mClusterManager;
     private final Map<Integer, Integer> mBoostedThreads = new HashMap<>();
     private final Map<Integer, Integer> mBoostPidCountMap = new HashMap<>();
+    private final Map<Integer, List<Integer>> mHwuiThreadCache = new HashMap<>();
 
     public AxUIBooster(AxPerfEnhancer perfEnhancer, AxCpuClusterManager clusterManager) {
         this.mPerfEnhancer = perfEnhancer;
@@ -108,6 +115,7 @@ public final class AxUIBooster {
         int currentCount = mBoostPidCountMap.getOrDefault(pid, MIN_REF_COUNT) - 1;
         if (currentCount <= MIN_REF_COUNT) {
             mBoostPidCountMap.remove(pid);
+            mHwuiThreadCache.remove(pid);
             mPerfEnhancer.setTaskBoost(pid, BOOST_LEVEL_RESTORE);
 
             List<Integer> hwuiTids = findHwuiThreadTids(pid);
@@ -138,33 +146,39 @@ public final class AxUIBooster {
     }
 
     private List<Integer> findHwuiThreadTids(int pid) {
+        List<Integer> cached = mHwuiThreadCache.get(pid);
+        if (cached != null) {
+            return cached;
+        }
+
         List<Integer> result = new ArrayList<>();
-        File taskDir = new File(PATH_PROC_PREFIX + pid + PATH_TASK_SUFFIX);
-        if (!taskDir.exists() || !taskDir.isDirectory()) {
+        int[] tids = Process.getPids(PATH_PROC_PREFIX + pid + PATH_TASK_SUFFIX, new int[PID_BUFFER_CAPACITY]);
+        if (tids == null) {
             return result;
         }
-        File[] threads = taskDir.listFiles();
-        if (threads == null) {
-            return result;
-        }
-        for (File t : threads) {
-            try {
-                int tid = Integer.parseInt(t.getName());
-                File commFile = new File(t, FILE_NAME_COMM);
-                if (commFile.exists()) {
-                    try (BufferedReader r = new BufferedReader(new FileReader(commFile))) {
-                        String comm = r.readLine();
-                        if (comm != null) {
-                            String trimmed = comm.trim();
-                            if (trimmed.equals(THREAD_NAME_RENDER_THREAD) || trimmed.startsWith("hwuiTask") || trimmed.startsWith("HwuiTask")) {
-                                result.add(tid);
-                            }
+        for (int tid : tids) {
+            if (tid <= 0) break;
+            File commFile = new File(PATH_PROC_PREFIX + pid + PATH_TASK_SUFFIX + "/" + tid + "/" + FILE_NAME_COMM);
+            if (commFile.exists()) {
+                try (FileInputStream fis = new FileInputStream(commFile)) {
+                    byte[] buf = new byte[COMM_BUFFER_SIZE];
+                    int len = fis.read(buf);
+                    if (len > 0) {
+                        if (buf[len - 1] == '\n') len--;
+                        String trimmed = new String(buf, 0, len, StandardCharsets.UTF_8).trim();
+                        if (trimmed.equals(THREAD_NAME_RENDER_THREAD)
+                                || trimmed.startsWith(PREFIX_HWUI_TASK)
+                                || trimmed.startsWith(PREFIX_HWUI_TASK_UPPER)
+                                || trimmed.contains(KEYWORD_WMSHELL)
+                                || trimmed.contains(KEYWORD_SPLASH)) {
+                            result.add(tid);
                         }
                     }
+                } catch (Exception ignored) {
                 }
-            } catch (Exception ignored) {
             }
         }
+        mHwuiThreadCache.put(pid, result);
         return result;
     }
 }

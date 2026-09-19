@@ -65,9 +65,13 @@ public final class AxFreezerController {
     }
 
     public void freezeBackgroundProcesses(boolean freeze) {
+        freezeBackgroundProcesses(freeze, null);
+    }
+
+    public void freezeBackgroundProcesses(boolean freeze, Set<Integer> exemptPids) {
         synchronized (mLock) {
             if (freeze) {
-                freezeAllBackgroundCgroupV2();
+                freezeAllBackgroundCgroupV2(exemptPids);
             } else {
                 thawAllBackgroundCgroupV2();
             }
@@ -109,7 +113,7 @@ public final class AxFreezerController {
         }
     }
 
-    private void freezeAllBackgroundCgroupV2() {
+    private void freezeAllBackgroundCgroupV2(Set<Integer> exemptPids) {
         File cgroupRoot = new File(PATH_FREEZER_V2_ROOT);
         if (!cgroupRoot.exists() || !cgroupRoot.isDirectory()) {
             return;
@@ -147,6 +151,9 @@ public final class AxFreezerController {
                 if (freezeFile.exists()) {
                     try {
                         int pid = Integer.parseInt(pidDir.getName().substring(PREFIX_PID.length()));
+                        if (exemptPids != null && exemptPids.contains(pid)) {
+                            continue;
+                        }
                         if (writeNode(freezeFile.getAbsolutePath(), STATE_FROZEN_V2)) {
                             mFrozenPids.add(pid);
                         }

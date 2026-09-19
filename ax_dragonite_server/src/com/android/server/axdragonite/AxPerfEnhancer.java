@@ -22,6 +22,7 @@ import android.os.IBinder;
 import android.os.Parcel;
 import android.os.PowerManagerInternal;
 import android.os.ServiceManager;
+import android.os.SystemProperties;
 import android.util.Slog;
 
 import com.android.internal.dragonite.AxDragoniteConstants;
@@ -88,8 +89,8 @@ public final class AxPerfEnhancer {
     public static final String VALUE_STUNE_LIGHT = "20";
     public static final String VALUE_STUNE_ZERO = "0";
 
-    public static final String VALUE_UCLAMP_HEAVY = "600";
-    public static final String VALUE_UCLAMP_LIGHT = "300";
+    public static final String VALUE_UCLAMP_HEAVY = "50";
+    public static final String VALUE_UCLAMP_LIGHT = "25";
     public static final String VALUE_UCLAMP_ZERO = "0";
 
     public static final String VALUE_LATENCY_SENSITIVE_ON = "1";
@@ -149,10 +150,6 @@ public final class AxPerfEnhancer {
             data.recycle();
             reply.recycle();
         }
-    }
-
-    public void sendSurfaceFlingerFrameBoost(boolean enable) {
-        sendSurfaceFlingerBoost(enable);
     }
 
     public void migrateToTopAppCgroup(int pid) {
@@ -253,6 +250,10 @@ public final class AxPerfEnhancer {
     }
 
     public void initBootCpusets() {
+        File restrictedDir = new File(AxDragoniteConstants.PATH_DEV_CPUCTL_RESTRICTED);
+        if (!restrictedDir.exists()) {
+            restrictedDir.mkdirs();
+        }
         writeNode(PATH_DEV_CPUSET_TOP_APP, mClusterManager.getTopAppCpusString());
         writeNode(PATH_DEV_CPUSET_FOREGROUND, mClusterManager.getForegroundCpusString());
         writeNode(PATH_DEV_CPUSET_SYSTEM_BACKGROUND, mClusterManager.getSystemBackgroundCpusString());
@@ -268,7 +269,6 @@ public final class AxPerfEnhancer {
         if (restrict) {
             writeNode(PATH_DEV_CPUSET_DEX2OAT, mClusterManager.getRestrictedDex2oatCpusString());
             writeNode(PATH_DEV_CPUSET_BACKGROUND, mClusterManager.getRestrictedBackgroundCpusString());
-            writeNode(PATH_DEV_CPUSET_SYSTEM_BACKGROUND, mClusterManager.getRestrictedSystemBgCpusString());
         } else {
             writeNode(PATH_DEV_CPUSET_DEX2OAT, mClusterManager.getBackgroundCpusString());
             writeNode(PATH_DEV_CPUSET_BACKGROUND, mClusterManager.getBackgroundCpusString());
@@ -309,6 +309,22 @@ public final class AxPerfEnhancer {
             return true;
         } catch (Throwable t) {
             return false;
+        }
+    }
+
+    public void migrateToRestrictedCpuctl(int pid, boolean enable) {
+        if (pid <= 0) return;
+        if (enable) {
+            writeNode(AxDragoniteConstants.PATH_DEV_CPUCTL_RESTRICTED_PROCS, String.valueOf(pid));
+            String uclampMin = SystemProperties.get(AxDragoniteConstants.PROPERTY_ANIMATIONBOOST_UCLAMP_MIN, AxDragoniteConstants.DEFAULT_UCLAMP_MIN_RESTRICTED);
+            writeNode(AxDragoniteConstants.PATH_DEV_CPUCTL_RESTRICTED_UCLAMP_MIN, uclampMin);
+            writeNode(AxDragoniteConstants.PATH_DEV_CPUCTL_RESTRICTED_UCLAMP_MAX, AxDragoniteConstants.DEFAULT_UCLAMP_MAX_RESTRICTED);
+            writeNode(AxDragoniteConstants.PATH_DEV_CPUCTL_RESTRICTED_LATENCY_SENSITIVE, VALUE_LATENCY_SENSITIVE_ON);
+            writeNode(AxDragoniteConstants.PATH_DEV_CPUSET_RESTRICTED_CPUS, mClusterManager.getBoostCpusString());
+        } else {
+            writeNode(AxDragoniteConstants.PATH_DEV_CPUCTL_ROOT_PROCS, String.valueOf(pid));
+            writeNode(AxDragoniteConstants.PATH_DEV_CPUCTL_RESTRICTED_UCLAMP_MIN, VALUE_UCLAMP_ZERO);
+            writeNode(AxDragoniteConstants.PATH_DEV_CPUSET_RESTRICTED_CPUS, mClusterManager.getAllCpusString());
         }
     }
 

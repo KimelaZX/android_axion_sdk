@@ -18,11 +18,18 @@ public final class AxDragoniteConstants {
     public static final String KEY_CALLING_PID = "calling_pid";
     public static final String KEY_PKG = "pkg";
     public static final String KEY_PACKAGE_NAME = "package_name";
+    public static final String KEY_PACKAGE = "package";
+    public static final String KEY_HANDLE = "handle";
     public static final String KEY_COMPONENT_NAME = "componentName";
     public static final String KEY_DURATION = "duration";
     public static final String KEY_PARAMS = "params";
     public static final String KEY_IS_COLD = "isCold";
     public static final String KEY_UID = "uid";
+
+    public static final String PKG_SYSTEMUI = "com.android.systemui";
+    public static final String KEYWORD_LAUNCHER = "launcher";
+    public static final String KEYWORD_CAMERA = "camera";
+    public static final int DEFAULT_FLING_VELOCITY = 0;
 
     public static final String WORKER_THREAD_NAME = "AxDragoniteWorker";
     public static final String TIMER_THREAD_NAME = "AxDragoniteTimer";
@@ -33,11 +40,11 @@ public final class AxDragoniteConstants {
 
     public static final int SCENE_AX_APP_START = 1;
     public static final int SCENE_FLING = 2;
-    public static final int SCENE_SCROLL = 2;
     public static final int SCENE_AX_FLING = 2;
     public static final int SCENE_DATA_LOADING = 3;
     public static final int SCENE_FOLDER_ANIMATION = 4;
     public static final int SCENE_DRAG_AND_DROP = 5;
+    public static final int SCENE_SCROLL = 6;
     public static final int SCENE_AX_NOTIFICATION_EXPAND = 100;
     public static final int SCENE_NOTIFICATION_EXPAND = SCENE_AX_NOTIFICATION_EXPAND;
     public static final int SCENE_AX_UNLOCK = 101;
@@ -60,6 +67,8 @@ public final class AxDragoniteConstants {
     public static final int SCENE_RECENT_TASK_SLIDE = 401;
     public static final int SCENE_AX_LAUNCHER_GESTURE_START = 401;
     public static final int SCENE_QUICK_SWITCH_APP = 402;
+    public static final int SCENE_FLING_LEVEL_1 = 500;
+    public static final int SCENE_DISABLE_INPUT_BOOST = 600;
 
     public static final int DEFAULT_TIMEOUT_MS = 500;
     public static final int DURATION_DEFAULT_TIMEOUT_MS = 500;
@@ -100,12 +109,24 @@ public final class AxDragoniteConstants {
     public static final int DURATION_ANIMATION_MS = 2000;
     public static final int DURATION_VOLUME_DIALOG_MS = 1500;
 
-    public static final int OPCODE_CPU_AFFINITY = 501;
-    public static final int OPCODE_SCHED_PRIORITY = 600;
-    public static final int OPCODE_BOOST_SCHED = 601;
-    public static final int OPCODE_CPUCTL_TOP_APP = 700;
-    public static final int OPCODE_CPUSET_TOP_APP = 800;
-    public static final int OPCODE_FREEZE_PROCESS = 1000;
+    public static final int OPCODE_THREAD_BOOST = 501;
+    public static final int OPCODE_BOOST_SCHED = 501;
+    public static final int OPCODE_THREAD_AFFINITY = 600;
+    public static final int OPCODE_CPU_AFFINITY = 600;
+    public static final int OPCODE_PROCESS_AFFINITY = 601;
+    public static final int OPCODE_SCHED_PRIORITY = 601;
+    public static final int OPCODE_CPUCTL_TOP_APP = 302;
+    public static final int OPCODE_CPUSET_TOP_APP = 100;
+    public static final int OPCODE_BACKGROUND_FREEZE = 700;
+    public static final int OPCODE_FREEZE_PROCESS = 700;
+
+    public static final int OPCODE_LEGACY_CPU_AFFINITY = 1;
+    public static final int OPCODE_LEGACY_SCHED_PRIORITY = 2;
+    public static final int OPCODE_LEGACY_BOOST_SCHED = 3;
+    public static final int OPCODE_LEGACY_CPUCTL_TOP_APP = 4;
+    public static final int OPCODE_LEGACY_CPUSET_TOP_APP = 800;
+    public static final int OPCODE_LEGACY_FREEZE_PROCESS = 1000;
+
     public static final int AFFINITY_TYPE_BIG_CORES = 1;
     public static final int BOOST_SCHED_POLICY = Process.SCHED_RESET_ON_FORK | Process.SCHED_RR;
     public static final int BOOST_SCHED_PRIORITY = 1;
@@ -113,6 +134,17 @@ public final class AxDragoniteConstants {
     public static final String PARAM_DELIMITER = ";";
     public static final String OPCODE_DELIMITER = ":";
     public static final String TID_DELIMITER = ",";
+
+    public static final String PATH_DEV_CPUCTL_RESTRICTED = "/dev/cpuctl/restricted";
+    public static final String PATH_DEV_CPUCTL_RESTRICTED_PROCS = "/dev/cpuctl/restricted/cgroup.procs";
+    public static final String PATH_DEV_CPUCTL_RESTRICTED_UCLAMP_MIN = "/dev/cpuctl/restricted/cpu.uclamp.min";
+    public static final String PATH_DEV_CPUCTL_RESTRICTED_UCLAMP_MAX = "/dev/cpuctl/restricted/cpu.uclamp.max";
+    public static final String PATH_DEV_CPUCTL_RESTRICTED_LATENCY_SENSITIVE = "/dev/cpuctl/restricted/cpu.uclamp.latency_sensitive";
+    public static final String PATH_DEV_CPUCTL_ROOT_PROCS = "/dev/cpuctl/cgroup.procs";
+    public static final String PATH_DEV_CPUSET_RESTRICTED_CPUS = "/dev/cpuset/restricted/cpus";
+    public static final String PROPERTY_ANIMATIONBOOST_UCLAMP_MIN = "persist.sys.animationboost_uclamp_min";
+    public static final String DEFAULT_UCLAMP_MIN_RESTRICTED = "50";
+    public static final String DEFAULT_UCLAMP_MAX_RESTRICTED = "100";
 
     public static final Set<String> ALLOWED_CPUSET_GROUPS = Set.of(
             "top-app", "foreground", "background", "system-background",

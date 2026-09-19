@@ -16,6 +16,8 @@
 
 package com.android.server.axdragonite;
 
+import com.android.internal.dragonite.AxDragoniteConstants;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -36,6 +38,7 @@ public final class AxActivityCustomizationUtil {
     public static final int DURATION_CAMERA_LAUNCH_MS = 1500;
     public static final int DURATION_PHOTOS_LAUNCH_MS = 1200;
     public static final int DURATION_LAUNCHER_FLING_MS = 600;
+    public static final int FLING_VELOCITY_FAST_THRESHOLD = 2000;
 
     private static final Map<String, Integer> sLaunchDurationOverrides = new HashMap<>();
     private static final Map<String, Integer> sFlingDurationOverrides = new HashMap<>();
@@ -63,6 +66,16 @@ public final class AxActivityCustomizationUtil {
         }
         Integer override = sFlingDurationOverrides.get(pkg);
         return override != null ? override : defaultDuration;
+    }
+
+    public static int getFlingSceneId(int velocity) {
+        if (Math.abs(velocity) > FLING_VELOCITY_FAST_THRESHOLD) {
+            return AxDragoniteConstants.SCENE_FLING_LEVEL_1;
+        }
+        return AxDragoniteConstants.SCENE_FLING;
+    }
+
+    public static void handleActivityResumed(int pid, String pkg, String component) {
     }
 
     public static boolean isNegativeScreen(String activityName) {

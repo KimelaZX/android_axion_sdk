@@ -22,8 +22,7 @@ import android.os.PowerManager;
 import android.os.Process;
 import android.util.Slog;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Set;
 
 /**
  * @hide
@@ -60,9 +59,6 @@ public final class AxBoostAdjuster {
     private final HandlerThread mTimerThread;
     private final Handler mTimerHandler;
 
-    private final Map<Integer, Integer> mOriginalThreadPriorities = new HashMap<>();
-    private final Object mLock = new Object();
-
     private final Runnable mRestoreInputBoostRunnable;
     private boolean mInputBoostActive = false;
 
@@ -75,47 +71,6 @@ public final class AxBoostAdjuster {
         mTimerThread = new HandlerThread(THREAD_NAME_ADJUSTER, Process.THREAD_PRIORITY_URGENT_DISPLAY);
         mTimerThread.start();
         mTimerHandler = new Handler(mTimerThread.getLooper());
-    }
-
-    public void animationBoost(int pid, long durationMs) {
-        if (pid <= INVALID_PID) {
-            return;
-        }
-
-        long actualDuration = Math.max(MIN_BOOST_DURATION_MS, Math.min(durationMs, MAX_BOOST_DURATION_MS));
-
-        synchronized (mLock) {
-            try {
-                if (!mOriginalThreadPriorities.containsKey(pid)) {
-                    mOriginalThreadPriorities.put(pid, Process.getThreadPriority(pid));
-                }
-                Process.setThreadScheduler(pid, SCHED_RR_RESET_ON_FORK, SCHED_REALTIME_PRIO);
-                Process.setThreadPriority(pid, Process.THREAD_PRIORITY_TOP_APP_BOOST);
-                Process.setThreadAffinity(pid, (int) mClusterManager.getBoostMask());
-            } catch (Throwable t) {
-                Slog.w(TAG, "Failed to apply animation boost for pid " + pid + ": " + t.getMessage());
-            }
-        }
-
-        mPerfEnhancer.setTaskBoost(pid, BOOST_LEVEL_HEAVY);
-        mPerfEnhancer.applyCpuBoost(BOOST_LEVEL_LIGHT);
-
-        mTimerHandler.postDelayed(() -> {
-            synchronized (mLock) {
-                Integer origPrio = mOriginalThreadPriorities.remove(pid);
-                if (origPrio != null) {
-                    try {
-                        Process.setThreadScheduler(pid, SCHED_NORMAL, SCHED_DEFAULT_PRIO);
-                        Process.setThreadPriority(pid, origPrio);
-                        Process.setThreadAffinity(pid, (int) mClusterManager.getAllMask());
-                    } catch (Throwable t) {
-                        Slog.w(TAG, "Failed to restore animation boost for pid " + pid + ": " + t.getMessage());
-                    }
-                }
-            }
-            mPerfEnhancer.setTaskBoost(pid, BOOST_LEVEL_NONE);
-            mPerfEnhancer.restoreCpuBoost();
-        }, actualDuration);
     }
 
     public void setThreadAffinity(int tid, int affinityType) {
@@ -176,9 +131,6 @@ public final class AxBoostAdjuster {
         if (pid <= INVALID_PID) {
             return;
         }
-        synchronized (mLock) {
-            mOriginalThreadPriorities.remove(pid);
-        }
         mFreezerController.unfreezeApp(-1, pid);
     }
 
@@ -194,7 +146,11 @@ public final class AxBoostAdjuster {
     }
 
     public void freezeBackgroundProcesses(boolean freeze) {
-        mFreezerController.freezeBackgroundProcesses(freeze);
+        mFreezerController.freezeBackgroundProcesses(freeze, null);
+    }
+
+    public void freezeBackgroundProcesses(boolean freeze, Set<Integer> exemptPids) {
+        mFreezerController.freezeBackgroundProcesses(freeze, exemptPids);
     }
 
     public void freezeApp(int uid, int pid) {
@@ -203,6 +159,10 @@ public final class AxBoostAdjuster {
 
     public void unfreezeApp(int uid, int pid) {
         mFreezerController.unfreezeApp(uid, pid);
+    }
+
+    public void migrateToRestrictedCpuctl(int pid, boolean enable) {
+        mPerfEnhancer.migrateToRestrictedCpuctl(pid, enable);
     }
 
     public void onReportResumedActivity(int pid, String pkg, String component) {

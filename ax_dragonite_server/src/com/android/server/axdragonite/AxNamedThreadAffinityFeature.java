@@ -19,9 +19,9 @@ package com.android.server.axdragonite;
 import android.os.Process;
 import android.util.Slog;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
+import java.io.FileInputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -37,6 +37,13 @@ public final class AxNamedThreadAffinityFeature {
     public static final String COMM_GL_THREAD = "GLThread";
     public static final String COMM_MAIN_THREAD = "MainThread";
     public static final String COMM_AUDIO_TRACK = "AudioTrack";
+    public static final String COMM_WMSHELL_MAIN = "wmshell.main";
+    public static final String COMM_WMSHELL_ANIM = "wmshell.anim";
+    public static final String COMM_SPLASH_SCREEN = "ll.splashscreen";
+    public static final String KEYWORD_WMSHELL = "wmshell";
+    public static final String KEYWORD_SPLASH = "splashscreen";
+    public static final int PID_BUFFER_CAPACITY = 1024;
+    public static final int COMM_BUFFER_SIZE = 32;
 
     public static final String PATH_PROC_PREFIX = "/proc/";
     public static final String PATH_TASK_SUFFIX = "/task";
@@ -51,6 +58,7 @@ public final class AxNamedThreadAffinityFeature {
 
     private final AxCpuClusterManager mClusterManager;
     private final Map<String, Long> mDefaultCommRules = new HashMap<>();
+    private final Map<Integer, Map<Integer, Long>> mPidThreadAffinityCache = new HashMap<>();
 
     public AxNamedThreadAffinityFeature(AxCpuClusterManager clusterManager) {
         this.mClusterManager = clusterManager;
@@ -64,6 +72,9 @@ public final class AxNamedThreadAffinityFeature {
         mDefaultCommRules.put(COMM_GL_THREAD, mClusterManager.getBoostMask());
         mDefaultCommRules.put(COMM_MAIN_THREAD, mClusterManager.getBoostMask());
         mDefaultCommRules.put(COMM_AUDIO_TRACK, mClusterManager.getLittleMask());
+        mDefaultCommRules.put(COMM_WMSHELL_MAIN, mClusterManager.getBoostMask());
+        mDefaultCommRules.put(COMM_WMSHELL_ANIM, mClusterManager.getBoostMask());
+        mDefaultCommRules.put(COMM_SPLASH_SCREEN, mClusterManager.getBoostMask());
     }
 
     public void applyNamedAffinityForPid(int pid) {
@@ -71,32 +82,44 @@ public final class AxNamedThreadAffinityFeature {
             return;
         }
 
-        File taskDir = new File(PATH_PROC_PREFIX + pid + PATH_TASK_SUFFIX);
-        if (!taskDir.exists() || !taskDir.isDirectory()) {
-            return;
-        }
-
-        File[] threads = taskDir.listFiles();
-        if (threads == null) {
-            return;
-        }
-
-        for (File threadDir : threads) {
-            if (!threadDir.isDirectory()) {
-                continue;
+        Map<Integer, Long> cachedRules = mPidThreadAffinityCache.get(pid);
+        if (cachedRules != null) {
+            for (Map.Entry<Integer, Long> entry : cachedRules.entrySet()) {
+                setThreadAffinity(entry.getKey(), entry.getValue());
             }
+            return;
+        }
+
+        int[] tids = Process.getPids(PATH_PROC_PREFIX + pid + PATH_TASK_SUFFIX, new int[PID_BUFFER_CAPACITY]);
+        if (tids == null) {
+            return;
+        }
+
+        Map<Integer, Long> rulesToCache = new HashMap<>();
+        for (int tid : tids) {
+            if (tid <= 0) break;
             try {
-                int tid = Integer.parseInt(threadDir.getName());
+                if (tid == pid) {
+                    rulesToCache.put(tid, mClusterManager.getBoostMask());
+                    setThreadAffinity(tid, mClusterManager.getBoostMask());
+                    continue;
+                }
                 String comm = readComm(tid);
                 if (comm != null) {
-                    Long mask = mDefaultCommRules.get(comm.trim());
+                    String trimmed = comm.trim();
+                    Long mask = mDefaultCommRules.get(trimmed);
+                    if (mask == null && (trimmed.contains(KEYWORD_WMSHELL) || trimmed.contains(KEYWORD_SPLASH))) {
+                        mask = mClusterManager.getBoostMask();
+                    }
                     if (mask != null) {
+                        rulesToCache.put(tid, mask);
                         setThreadAffinity(tid, mask);
                     }
                 }
             } catch (Exception ignored) {
             }
         }
+        mPidThreadAffinityCache.put(pid, rulesToCache);
 
         AxPerfEnhancer.writeNode(PATH_NTA_PID, String.valueOf(pid));
         for (Map.Entry<String, Long> entry : mDefaultCommRules.entrySet()) {
@@ -109,6 +132,7 @@ public final class AxNamedThreadAffinityFeature {
         if (pid <= INVALID_PID) {
             return;
         }
+        mPidThreadAffinityCache.remove(pid);
         AxPerfEnhancer.writeNode(PATH_NTA_PID, String.valueOf(pid));
         AxPerfEnhancer.writeNode(PATH_NTA_RESET, VALUE_RESET_TRIGGER);
 
@@ -143,10 +167,16 @@ public final class AxNamedThreadAffinityFeature {
         if (!file.exists()) {
             return null;
         }
-        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
-            return reader.readLine();
+        try (FileInputStream fis = new FileInputStream(file)) {
+            byte[] buf = new byte[COMM_BUFFER_SIZE];
+            int len = fis.read(buf);
+            if (len > 0) {
+                if (buf[len - 1] == '\n') len--;
+                return new String(buf, 0, len, StandardCharsets.UTF_8).trim();
+            }
         } catch (Exception e) {
             return null;
         }
+        return null;
     }
 }

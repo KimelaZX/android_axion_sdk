@@ -18,9 +18,6 @@ package com.android.server.axdragonite;
 
 import android.os.Trace;
 
-/**
- * @hide
- */
 public final class AxSmartTraceUtils {
     public static final String TRACE_TAG_PREFIX = "AxDragonite:";
 

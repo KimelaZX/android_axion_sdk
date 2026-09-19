@@ -122,7 +122,7 @@ object AxDragonite {
     @JvmOverloads
     @JvmStatic
     fun onGestureStart(durationMs: Int = DURATION_GESTURE_MS): Int =
-        acquire(SCENE_RECENT_TASK_SLIDE, durationMs)
+        acquire(SCENE_RECENT_TASK_SLIDE, durationMs, buildLaunchBundle(null, durationMs))
 
     @JvmStatic
     fun onGestureEnd(): Unit = release(SCENE_RECENT_TASK_SLIDE)
@@ -130,7 +130,7 @@ object AxDragonite {
     @JvmOverloads
     @JvmStatic
     fun onBackHome(durationMs: Int = DURATION_BACK_HOME_MS): Int =
-        acquire(SCENE_APP_EXIT_ANIM, durationMs)
+        acquire(SCENE_APP_EXIT_ANIM, durationMs, buildLaunchBundle(null, durationMs))
 
     @JvmStatic
     fun onBackHomeEnd(): Unit = release(SCENE_APP_EXIT_ANIM)
@@ -138,7 +138,7 @@ object AxDragonite {
     @JvmOverloads
     @JvmStatic
     fun onQuickSwitch(durationMs: Int = DURATION_QUICK_SWITCH_MS): Int =
-        acquire(SCENE_QUICK_SWITCH_APP, durationMs)
+        acquire(SCENE_QUICK_SWITCH_APP, durationMs, buildLaunchBundle(null, durationMs))
 
     @JvmStatic
     fun onQuickSwitchEnd(): Unit = release(SCENE_QUICK_SWITCH_APP)
@@ -261,16 +261,14 @@ object AxDragonite {
     fun onVolumeDialogEnd(): Unit = release(SCENE_ANIMATION)
 
     @JvmStatic
-    fun onKeyguardDismiss(): Int =
-        acquire(SCENE_UNLOCK, DURATION_UNLOCK_MS)
+    fun onKeyguardDismiss(): Int = onUnlock()
 
     @JvmStatic
-    fun onKeyguardDismissEnd(): Unit = release(SCENE_UNLOCK)
+    fun onKeyguardDismissEnd(): Unit = onUnlockEnd()
 
     @JvmStatic
-    fun onWakeUp(): Int =
-        acquire(SCENE_UNLOCK, DURATION_UNLOCK_MS)
+    fun onWakeUp(): Int = onUnlock()
 
     @JvmStatic
-    fun onWakeUpEnd(): Unit = release(SCENE_UNLOCK)
+    fun onWakeUpEnd(): Unit = onUnlockEnd()
 }

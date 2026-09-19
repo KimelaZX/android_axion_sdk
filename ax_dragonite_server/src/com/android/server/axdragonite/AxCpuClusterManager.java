@@ -365,13 +365,11 @@ public final class AxCpuClusterManager {
     }
 
     public String getSystemBackgroundCpusString() {
-        return toCpusetString(mEfficiencyPoolMask != 0 ? mEfficiencyPoolMask : mAllMask);
+        return toCpusetString(mAllMask);
     }
 
     public String getRestrictedSystemBgCpusString() {
-        int poolCount = Long.bitCount(mEfficiencyPoolMask);
-        int count = Math.max(1, (poolCount * 3) / 4);
-        return toCpusetString(getLowestNBits(mEfficiencyPoolMask, count));
+        return toCpusetString(mAllMask);
     }
 
     public String getBackgroundCpusString() {
