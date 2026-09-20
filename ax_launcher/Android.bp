@@ -1,0 +1,12 @@
+package {
+    default_visibility: ["//visibility:public"],
+}
+
+filegroup {
+    name: "ax_launcher_sources",
+    srcs: [
+        "src/**/*.java",
+        "src/**/*.kt",
+    ],
+    visibility: ["//packages/apps/Launcher3:__subpackages__"],
+}
