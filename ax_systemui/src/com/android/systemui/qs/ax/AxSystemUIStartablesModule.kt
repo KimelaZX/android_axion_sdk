@@ -18,6 +18,7 @@ package com.android.systemui.qs.ax
 
 import com.android.systemui.CoreStartable
 import com.android.systemui.qs.ax.AxQsStartable
+import com.android.systemui.wallpapers.AxWallpaperZoomController
 import dagger.Binds
 import dagger.Module
 import dagger.multibindings.ClassKey
@@ -29,4 +30,9 @@ abstract class AxSystemUIStartablesModule {
     @IntoMap
     @ClassKey(AxQsStartable::class)
     abstract fun bindAxQsStartable(impl: AxQsStartable): CoreStartable
+
+    @Binds
+    @IntoMap
+    @ClassKey(AxWallpaperZoomController::class)
+    abstract fun bindAxWallpaperZoomController(impl: AxWallpaperZoomController): CoreStartable
 }
